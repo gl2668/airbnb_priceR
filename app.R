@@ -58,6 +58,13 @@ ui <- fluidPage(
             
             tabsetPanel(type = "tabs",
                         tabPanel("Listings",
+                                 h3("Introduction"),
+                                 p("This shiny dashboard allows you to explore Airbnb listings in London, UK. 
+                                   The data source is InsideAirbnb.com but you can find a clean version on Kaggle.
+                                   A price estimate is generated for the input features you have selected based on
+                                   a linear regression model. On the second tab, you can also find some
+                                   helpful visualisations of listings in the selected neighbourhood."),
+                                 br(),
                                  h4("Number of Listings"),
                                  p(textOutput("count")),
                                  br(),

@@ -1,6 +1,8 @@
 # airbnb_priceR
 
-### What is this???
+***
+
+### Purpose
 
 [airbnb priceR](https://geraldlee.shinyapps.io/airbnb_priceR/) is a shiny app that was built on R to explore and analyze Airbnb listings and prices in London, UK.
 
@@ -13,6 +15,7 @@ You can use this app to:
 * Get an estimate Airbnb price based on `neighbourhood` filter, `accommodates` and `bedrooms`
 * Get visualisations of `price` and `review_score` for listings in the neighbourhood
 
+***
 
 ### Data
 

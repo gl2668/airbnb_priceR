@@ -5,16 +5,22 @@
 #
 #
 
+library(caret)
 library(dplyr)
 library(DT)
-library(caret)
 library(ggplot2)
+library(leaflet)
+library(leaflet.extras)
+library(shinythemes)
 
 # Load File
 listings <- readRDS("shiny_listings.rds")
 
 # Define UI for the Airbnb application
 ui <- fluidPage(
+    
+    # Set Shiny Theme
+    theme = shinytheme("united"),
 
     # Application title
     titlePanel("Airbnb PriceR", windowTitle = "Airbnb"),
@@ -35,12 +41,12 @@ ui <- fluidPage(
                                     "Waltham Forest", "Wandsworth", "Westminster"
                                     )),
             sliderInput("rooms",
-                        "Number of rooms:",
+                        "Number of Rooms",
                         min = 1,
                         max = 10,
                         value = 1),
             sliderInput("accommodates",
-                        "Number of guests:",
+                        "Number of Guests",
                         min = 1,
                         max = 10,
                         value = 2),
@@ -58,36 +64,34 @@ ui <- fluidPage(
             
             tabsetPanel(type = "tabs",
                         tabPanel("Listings",
-                                 h3("Introduction"),
-                                 p("This shiny dashboard allows you to explore Airbnb listings in London, UK. 
-                                   The data source is InsideAirbnb.com but you can find a clean version on Kaggle.
-                                   A price estimate is generated for the input features you have selected based on
-                                   a linear regression model. On the second tab, you can also find some
-                                   helpful visualisations of listings in the selected neighbourhood."),
-                                 br(),
-                                 h4("Number of Listings"),
+                                 h2("Explore Airbnb listings in London"),
+                                 h3("Number of Listings"),
                                  p(textOutput("count")),
-                                 br(),
-                                 h4("PriceR Estimate"),
+                                 h3("PriceR Estimate"),
                                  p(textOutput("estimate")),
                                  br(),
-                                 h4("Explore Listings"),
+                                 leafletOutput(outputId = "map"),
+                                 br()),
+                        tabPanel("Explore Listings",
+                                 h4("Listings Table"),
                                  p("Explore listings based on your filter in the table below"),
                                  br(),
-                                 DT::dataTableOutput("prices"),
-                                 br()),
+                                 DT::dataTableOutput("prices")),
                         tabPanel("Host Insights",
                                  br(),
                                  plotOutput("insights"),
                                  br(),
-                                 plotOutput("histogram")))
+                                 plotOutput("histogram")
+                                 ))
             
         )
     )
 )
 
-# Define server logic required to draw a histogram
+# Define server logic
 server <- function(input, output) {
+    
+    # Data Table Output
     output$prices <- renderDataTable({
         listings_table <- listings %>% 
             dplyr::filter(price <= 800) %>%
@@ -104,6 +108,7 @@ server <- function(input, output) {
                       options = list(pageLength = 8))
     })
     
+    # Text Output - Count
     output$count <- renderText({
         paste("There are", listings %>% 
             dplyr::filter(price <= 800) %>%
@@ -113,6 +118,7 @@ server <- function(input, output) {
             nrow(), "listings that match your filter in this neighbourhood")
     })
     
+    # Text Output - Estimated Price
     output$estimate <- renderText({
         listings_estimate <- listings %>% 
             dplyr::filter(price <= 800) %>% 
@@ -135,6 +141,7 @@ server <- function(input, output) {
         paste("Based on your filter, a listing in this neighbourhood should cost USD", y_hat, "a night")
     })
     
+    # Scatter Plot
     output$insights <- renderPlot ({
         data_sub <- listings %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
                                    bedrooms == input$rooms,
@@ -167,6 +174,7 @@ server <- function(input, output) {
                      linetype = "dashed")
     })
     
+    # Histogram
     output$histogram <- renderPlot ({
         
         data_sub2 <- listings %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
@@ -191,6 +199,29 @@ server <- function(input, output) {
             geom_vline(xintercept = mean(data_sub2$price, na.rm = TRUE),
                        colour = "red",
                        linetype = "dashed")
+    })
+    
+    # Map
+    output$map <- renderLeaflet({
+        
+        data_sub3 <- listings %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
+                                                bedrooms == input$rooms,
+                                                accommodates == input$accommodates,
+                                                price <= 800)
+        
+        leaflet(data_sub3) %>% 
+            setView(lng = -0.118092, lat = 51.509865, zoom = 10)  %>% #setting the view over ~ center of North America
+            addTiles() %>% 
+            addProviderTiles(providers$CartoDB.Positron) %>%
+            addCircles(data = data_sub3, 
+                       lat = ~ latitude, 
+                       lng = ~ longitude, 
+                       weight = 2, 
+                       popup = ~as.character(listing_url), 
+                       label = ~as.character(paste0("Price: ", sep = " ", price)), 
+                       fillOpacity = 0.3,
+                       color = "orange")
+            
     })
 }
 

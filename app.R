@@ -77,12 +77,26 @@ ui <- fluidPage(
                                  p("Explore listings based on your filter in the table below"),
                                  br(),
                                  DT::dataTableOutput("prices")),
-                        tabPanel("Host Insights",
+                        tabPanel("Neighbourhood Analytics",
                                  br(),
                                  plotOutput("insights"),
                                  br(),
-                                 plotOutput("histogram")
-                                 ))
+                                 plotOutput("histogram")),
+                        tabPanel("Info",
+                                 br(),
+                                 p("Thank you for visiting this page! This web-app was built through RShiny.
+                                   If you are interested, you can check out the code and data on my",
+                                   tags$a(href="https://github.com/gl2668/airbnb_priceR", "github"),
+                                   " page"),
+                                 br(),
+                                 p("The data from this web-app was retrieved from InsideAirbnb.com, which
+                                   I have cleaned and prepared. If you are interested in using the data for 
+                                   visualization and ML applications, you can find a version on", 
+                                   tags$a(href="https://www.kaggle.com/gl2668/london-airbnb-listings", "kaggle")),
+                                 br(),
+                                 p("If you have any questions / feedback, please feel free to shoot me an email at
+                                   gl2668@columbia.edu. I welcome and greatly appreciate it!"))
+                                 )
             
         )
     )
@@ -194,7 +208,7 @@ server <- function(input, output) {
                                                     linetype = "dashed")) +
             labs(x = "Price (USD)",
                  y = "Number of Listings",
-                 title = "Histogram of Airbnb Prices",
+                 title = "Histogram of Airbnb Prices in the Neighbourhood",
                  subtitle = "Based on Input Filters") +
             geom_vline(xintercept = mean(data_sub2$price, na.rm = TRUE),
                        colour = "red",

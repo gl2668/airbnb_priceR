@@ -113,13 +113,15 @@ server <- function(input, output) {
                           bedrooms == input$rooms,
                           accommodates == input$accommodates,
                           room_type == input$room_types_input) %>%
-            select("Price" = price,
+            select("Price (£)" = price,
                    "Property Type" = property_type,
                    "Review" = review_scores_rating,
-                   "Link" = listing_url)
+                   "Link" = listing_link)
         DT::datatable(listings_table,
                       rownames = FALSE,
-                      options = list(pageLength = 8))
+                      options = list(pageLength = 8,
+                                     columnDefs = list(list(className = 'dt-center', targets = '_all'))),
+                      escape = FALSE)
     })
     
     # Text Output - Count
@@ -152,7 +154,7 @@ server <- function(input, output) {
         
         y_hat <- predict(naive_linear, newdata = test) %>% round(2)
         
-        paste("Based on your filter, a listing in this neighbourhood should cost USD", y_hat, "a night")
+        paste("Based on your filter, a listing in this neighbourhood should cost GBP", y_hat, "a night")
     })
     
     # Scatter Plot
@@ -176,7 +178,7 @@ server <- function(input, output) {
                                                   color = "black",
                                                   linetype = "dashed")) +
           labs(x = "Review Score Rating (over 100)",
-               y = "Price (USD)",
+               y = "Price (GBP)",
                color = "Bathrooms",
                title = "Airbnb Statistics for the Neighbourhood",
                subtitle = "Based on Input Filters") +
@@ -206,7 +208,7 @@ server <- function(input, output) {
                   panel.grid.major.y = element_line(size = .1, 
                                                     color = "black",
                                                     linetype = "dashed")) +
-            labs(x = "Price (USD)",
+            labs(x = "Price (GBP)",
                  y = "Number of Listings",
                  title = "Histogram of Airbnb Prices in the Neighbourhood",
                  subtitle = "Based on Input Filters") +
@@ -231,7 +233,7 @@ server <- function(input, output) {
                        lat = ~ latitude, 
                        lng = ~ longitude, 
                        weight = 2, 
-                       popup = ~as.character(listing_url), 
+                       popup = ~as.character(listing_link), 
                        label = ~as.character(paste0("Price: ", sep = " ", price)), 
                        fillOpacity = 0.3,
                        color = "orange")

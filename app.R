@@ -52,7 +52,8 @@ ui <- fluidPage(
                         value = 2),
             selectInput(inputId = "room_types_input", 
                         label = "Type of Lodging",
-                        choices = c("Entire home/apt",
+                        choices = c("All types",
+                                    "Entire home/apt",
                                     "Private room",
                                     "Shared room",
                                     "Hotel room"
@@ -107,21 +108,39 @@ server <- function(input, output) {
     
     # Data Table Output
     output$prices <- renderDataTable({
-        listings_table <- listings %>% 
-            dplyr::filter(price <= 800) %>%
-            dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
-                          bedrooms == input$rooms,
-                          accommodates == input$accommodates,
-                          room_type == input$room_types_input) %>%
-            select("Price (£)" = price,
-                   "Property Type" = property_type,
-                   "Review" = review_scores_rating,
-                   "Link" = listing_link)
-        DT::datatable(listings_table,
-                      rownames = FALSE,
-                      options = list(pageLength = 8,
-                                     columnDefs = list(list(className = 'dt-center', targets = '_all'))),
-                      escape = FALSE)
+        if (input$room_types_input == "All types"){
+            listings_table <- listings %>% 
+                dplyr::filter(price <= 800) %>%
+                dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
+                              bedrooms == input$rooms,
+                              accommodates == input$accommodates) %>%
+                select("Price (£)" = price,
+                       "Property Type" = property_type,
+                       "Review" = review_scores_rating,
+                       "Link" = listing_link)
+            DT::datatable(listings_table,
+                          rownames = FALSE,
+                          options = list(pageLength = 8,
+                                         columnDefs = list(list(className = 'dt-center', targets = '_all'))),
+                          escape = FALSE)
+        } else {
+            listings_table <- listings %>% 
+                dplyr::filter(price <= 800) %>%
+                dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
+                              bedrooms == input$rooms,
+                              accommodates == input$accommodates,
+                              room_type == input$room_types_input) %>%
+                select("Price (£)" = price,
+                       "Property Type" = property_type,
+                       "Review" = review_scores_rating,
+                       "Link" = listing_link)
+            DT::datatable(listings_table,
+                          rownames = FALSE,
+                          options = list(pageLength = 8,
+                                         columnDefs = list(list(className = 'dt-center', targets = '_all'))),
+                          escape = FALSE)
+        }
+        
     })
     
     # Text Output - Count
@@ -220,12 +239,13 @@ server <- function(input, output) {
     # Map
     output$map <- renderLeaflet({
         
-        data_sub3 <- listings %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
+        if (input$room_types_input == "All types"){
+            data_sub3 <- listings %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
                                                 bedrooms == input$rooms,
                                                 accommodates == input$accommodates,
                                                 price <= 800)
-        
-        leaflet(data_sub3) %>% 
+            
+            leaflet(data_sub3) %>% 
             setView(lng = -0.118092, lat = 51.509865, zoom = 10)  %>% #setting the view over ~ center of North America
             addTiles() %>% 
             addProviderTiles(providers$CartoDB.Positron) %>%
@@ -237,6 +257,27 @@ server <- function(input, output) {
                        label = ~as.character(paste0("Price: ", sep = " ", price)), 
                        fillOpacity = 0.3,
                        color = "orange")
+        } else {
+            
+            data_sub3 <- listings %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
+                                                    bedrooms == input$rooms,
+                                                    accommodates == input$accommodates,
+                                                    room_type == input$room_types_input,
+                                                    price <= 800)
+            
+            leaflet(data_sub3) %>% 
+                setView(lng = -0.118092, lat = 51.509865, zoom = 10)  %>% #setting the view over ~ center of North America
+                addTiles() %>% 
+                addProviderTiles(providers$CartoDB.Positron) %>%
+                addCircles(data = data_sub3, 
+                           lat = ~ latitude, 
+                           lng = ~ longitude, 
+                           weight = 2, 
+                           popup = ~as.character(listing_link), 
+                           label = ~as.character(paste0("Price: ", sep = " ", price)), 
+                           fillOpacity = 0.3,
+                           color = "orange")
+        }
             
     })
 }

@@ -15,6 +15,7 @@ library(shinythemes)
 
 # Load File
 listings <- readRDS("shiny_listings.rds")
+tube <- readRDS("london_tube.rds")
 
 # Define UI for the Airbnb application
 ui <- fluidPage(
@@ -23,7 +24,7 @@ ui <- fluidPage(
     theme = shinytheme("united"),
 
     # Application title
-    titlePanel("Airbnb PriceR", windowTitle = "Airbnb"),
+    titlePanel("Airbnb PriceR: Airbnb Analytics", windowTitle = "Airbnb Data for Hosts and Guests"),
 
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
@@ -90,9 +91,8 @@ ui <- fluidPage(
                                    tags$a(href="https://github.com/gl2668/airbnb_priceR", "github"),
                                    " page"),
                                  br(),
-                                 p("The data from this web-app was retrieved from InsideAirbnb.com, which
-                                   I have cleaned and prepared. If you are interested in using the data for 
-                                   visualization and ML applications, you can find a version on", 
+                                 p("The data from this web-app was retrieved from InsideAirbnb.com. If you are 
+                                 interested in using the data for visualization and ML applications, you can find a version on", 
                                    tags$a(href="https://www.kaggle.com/gl2668/london-airbnb-listings", "kaggle")),
                                  br(),
                                  p("If you have any questions / feedback, please feel free to shoot me an email at
@@ -239,6 +239,14 @@ server <- function(input, output) {
     # Map
     output$map <- renderLeaflet({
         
+        content <- paste("Station Name:", tube$Name, "<br/>",
+                         "Line:", tube$Line, "<br/>")
+        
+        tubeIcons <- icons(
+            iconUrl = "underground.png",
+            iconWidth = 10, iconHeight = 10,
+            iconAnchorX = 7.5, iconAnchorY = 8.5)
+        
         if (input$room_types_input == "All types"){
             data_sub3 <- listings %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
                                                 bedrooms == input$rooms,
@@ -256,7 +264,19 @@ server <- function(input, output) {
                        popup = ~as.character(listing_link), 
                        label = ~as.character(paste0("Price: ", sep = " ", price)), 
                        fillOpacity = 0.3,
-                       color = "orange")
+                       color = "orange",
+                       group = "Listings") %>%
+            addMarkers(data = tube, 
+                       lat = ~ lat, 
+                       lng = ~ lng,
+                       icon = tubeIcons,
+                       popup = ~as.character(content),
+                       group = "Tube",
+                       options = markerOptions(opacity = 0.3)) %>%
+                addLayersControl(
+                    overlayGroups = c("Listings", "Tube"),
+                    options = layersControlOptions(collapsed = FALSE)) %>% hideGroup("Tube")
+                
         } else {
             
             data_sub3 <- listings %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
@@ -276,7 +296,18 @@ server <- function(input, output) {
                            popup = ~as.character(listing_link), 
                            label = ~as.character(paste0("Price: ", sep = " ", price)), 
                            fillOpacity = 0.3,
-                           color = "orange")
+                           color = "orange",
+                           group = "Listings") %>%
+                addMarkers(data = tube, 
+                           lat = ~ lat, 
+                           lng = ~ lng,
+                           icon = tubeIcons,
+                           popup = ~as.character(content),
+                           group = "Tube",
+                           options = markerOptions(opacity = 0.3)) %>%
+                addLayersControl(
+                    overlayGroups = c("Listings", "Tube"),
+                    options = layersControlOptions(collapsed = FALSE)) %>% hideGroup("Tube")
         }
             
     })

@@ -12,10 +12,12 @@ library(ggplot2)
 library(leaflet)
 library(leaflet.extras)
 library(shinythemes)
+library(tidyr)
 
 # Load File
 listings <- readRDS("shiny_listings.rds")
 tube <- readRDS("london_tube.rds")
+reviews <- readRDS("reviewShiny.rds")
 
 # Define UI for the Airbnb application
 ui <- fluidPage(
@@ -58,7 +60,7 @@ ui <- fluidPage(
                                     "Private room",
                                     "Shared room",
                                     "Hotel room"
-                        ))
+                        )), width = 4
         ),
 
         # Output of Shiny pp
@@ -84,19 +86,34 @@ ui <- fluidPage(
                                  plotOutput("insights"),
                                  br(),
                                  plotOutput("histogram")),
+                         tabPanel("Cleaning Fees",
+                                  br(),
+                                  plotOutput("average_cleaning_fees")),
+                        tabPanel("Guest Ratings",
+                                 br(),
+                                 plotOutput("ratings"),
+                                 br(),
+                                 plotOutput("sentiment_analysis")),
                         tabPanel("Info",
                                  br(),
-                                 p("Thank you for visiting this page! This web-app was built through RShiny.
-                                   If you are interested, you can check out the code and data on my",
-                                   tags$a(href="https://github.com/gl2668/airbnb_priceR", "github"),
+                                 p("Thank you for visiting this page!"),
+                                 br(),
+                                 p("This web-app was built through RShiny. The intended project is to assist both Airbnb hosts and guests by
+                                 providing them with an interactive dashboard where they can analyze different variables. For guests, we hope this 
+                                 dashboard can provide you with a new way to find a short-term accommodation in London. You can toggle through different
+                                 ratings and reviews, cleaning fees and proximity to public transportation. For Airbnb hosts, we hope this platform allows you
+                                 to gain an insight into comparative prices and ratings. If you are interested to find out more about how this app was built, 
+                                 you can check out the code and data on the",
+                                   tags$a(href="https://github.com/gl2668/airbnb_priceR", "github page"),
                                    " page"),
                                  br(),
-                                 p("The data from this web-app was retrieved from InsideAirbnb.com. If you are 
+                                 p("The data from this web-app was retrieved from InsideAirbnb.com. It comprises over 90 columns and approximately 
+                                 85,000 host listings in London, UK from 2009 to 5th November 2019. If you are 
                                  interested in using the data for visualization and ML applications, you can find a version on", 
                                    tags$a(href="https://www.kaggle.com/gl2668/london-airbnb-listings", "kaggle")),
                                  br(),
                                  p("If you have any questions / feedback, please feel free to shoot me an email at
-                                   gl2668@columbia.edu. I welcome and greatly appreciate it!"))
+                                   gl2668@columbia.edu."))
                                  )
             
         )
@@ -200,12 +217,12 @@ server <- function(input, output) {
                y = "Price (GBP)",
                color = "Bathrooms",
                title = "Airbnb Statistics for the Neighbourhood",
-               subtitle = "Based on Input Filters") +
+               subtitle = "Based on Input Filters, Orange Dashed Lines are Average Values") +
           geom_hline(yintercept = mean(data_sub$price),
-                     colour = "red",
+                     colour = "#F7965C",
                      linetype = "dashed") +
           geom_vline(xintercept = mean(data_sub$review_scores_rating, na.rm = TRUE),
-                     colour = "red",
+                     colour = "#F7965C",
                      linetype = "dashed")
     })
     
@@ -218,7 +235,7 @@ server <- function(input, output) {
                                                price <= 800)
         
         ggplot(data_sub2, aes(x = price,)) +
-            geom_histogram() +
+            geom_histogram(fill = "#434343") +
             theme(panel.background = element_rect(fill = "white",
                                                   colour = "black",
                                                   size = 0.5, 
@@ -230,9 +247,9 @@ server <- function(input, output) {
             labs(x = "Price (GBP)",
                  y = "Number of Listings",
                  title = "Histogram of Airbnb Prices in the Neighbourhood",
-                 subtitle = "Based on Input Filters") +
+                 subtitle = "Based on Input Filters, Orange Dashed Lines are Average Values") +
             geom_vline(xintercept = mean(data_sub2$price, na.rm = TRUE),
-                       colour = "red",
+                       colour = "#F7965C",
                        linetype = "dashed")
     })
     
@@ -241,7 +258,6 @@ server <- function(input, output) {
         
         content <- paste("Station Name:", tube$Name, "<br/>",
                          "Line:", tube$Line, "<br/>")
-        
         tubeIcons <- icons(
             iconUrl = "underground.png",
             iconWidth = 10, iconHeight = 10,
@@ -264,18 +280,18 @@ server <- function(input, output) {
                        popup = ~as.character(listing_link), 
                        label = ~as.character(paste0("Price: ", sep = " ", price)), 
                        fillOpacity = 0.3,
-                       color = "orange",
+                       color = "#F7965C",
                        group = "Listings") %>%
             addMarkers(data = tube, 
                        lat = ~ lat, 
                        lng = ~ lng,
                        icon = tubeIcons,
                        popup = ~as.character(content),
-                       group = "Tube",
+                       group = "Rail Transport",
                        options = markerOptions(opacity = 0.3)) %>%
                 addLayersControl(
-                    overlayGroups = c("Listings", "Tube"),
-                    options = layersControlOptions(collapsed = FALSE)) %>% hideGroup("Tube")
+                    overlayGroups = c("Listings", "Rail Transport"),
+                    options = layersControlOptions(collapsed = FALSE)) %>% hideGroup("Rail Transport")
                 
         } else {
             
@@ -296,7 +312,7 @@ server <- function(input, output) {
                            popup = ~as.character(listing_link), 
                            label = ~as.character(paste0("Price: ", sep = " ", price)), 
                            fillOpacity = 0.3,
-                           color = "orange",
+                           color = "#F7965C",
                            group = "Listings") %>%
                 addMarkers(data = tube, 
                            lat = ~ lat, 
@@ -311,6 +327,87 @@ server <- function(input, output) {
         }
             
     })
+    
+    # Rating
+    output$ratings <- renderPlot ({
+        
+        data_sub4 <- listings %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
+                                                price <= 800)
+        
+        ggplot(data_sub4, aes(x = review_scores_rating)) +
+            geom_histogram(fill = "#434343") +
+            theme(panel.background = element_rect(fill = "white",
+                                                  colour = "black",
+                                                  size = 0.5, 
+                                                  linetype = "solid"),
+                  panel.grid.major.x = element_blank(),
+                  panel.grid.major.y = element_line(size = .1, 
+                                                    color = "black",
+                                                    linetype = "dashed")) +
+            labs(x = "Review Score Rating (over 100)",
+                 y = "Count",
+                 title = "Histogram of Airbnb Ratings in the Neighbourhood",
+                 subtitle = "Based on Input Filters, Orange Dashed Lines are Average Values") +
+            geom_vline(xintercept = mean(data_sub4$review_scores_rating, na.rm = TRUE),
+                       colour = "#F7965C",
+                       linetype = "dashed")
+    })
+    
+    # Average Cleaning Fees
+    output$average_cleaning_fees <- renderPlot ({
+        data_sub5 <- listings %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood,
+                                                price <= 800)
+        
+        data_sub5 %>%
+            group_by(beds) %>%
+            summarize(avg_room_fee = round(mean(price, na.rm =TRUE), 2),
+                      avg_cleaning_fee = round(mean(cleaning_fee, na.rm =TRUE), 2)) %>%
+            filter(beds < 11, beds > 0) %>%
+            mutate(total_fee = avg_room_fee + avg_cleaning_fee) %>%
+            gather(fee_type, avg_fee, avg_cleaning_fee:avg_room_fee) %>%
+            ggplot(aes(x = beds, y = avg_fee/beds, fill = fee_type)) + 
+            geom_col() +
+            theme(panel.background = element_rect(fill = "white",
+                                                  colour = "black",
+                                                  size = 0.5, 
+                                                  linetype = "solid"),
+                  panel.grid.major.x = element_blank(),
+                  panel.grid.major.y = element_line(size = .1, 
+                                                    color = "black",
+                                                    linetype = "dashed")) +
+            scale_x_discrete(name = "Number of Beds in Listing", limits = c(1: 10), breaks = seq(1, 10, 1)) +
+            scale_y_continuous(name = "Average Fees per Bed (GBP)") +
+            scale_fill_manual(labels = c("Cleaning Fees Per Bed", "Room Fee Per Bed"), values = c("#F7965C", "#FFC39F")) +
+            labs(title = "Cleaning Fees by Number of Beds") +
+            guides(fill = guide_legend(title = "Fee Type")) +
+            geom_text(aes(label = round(avg_fee/beds), y = round(avg_fee/beds) + 0.05),
+                      position = position_stack(vjust = 0.5))
+    })
+    
+    # Sentiment Analysis
+    output$sentiment_analysis <- renderPlot ({
+        data_sub6 <- reviews %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood)
+        
+        data_sub6 %>%
+            ggplot(aes(x = polarity)) + 
+            geom_histogram(fill="#434343") +
+            theme(panel.background = element_rect(fill = "white",
+                                                  colour = "black",
+                                                  size = 0.5, 
+                                                  linetype = "solid"),
+                  panel.grid.major.x = element_blank(),
+                  panel.grid.major.y = element_line(size = .1, 
+                                                    color = "black",
+                                                    linetype = "dashed")) +
+            labs(x = "AFINN Sentiment Score of Reviews",
+                 y = "Count",
+                 title = "Sentiment Analysis of Reviews in Neighbourhood",
+                 subtitle = "Based on Input Filters, Orange Dashed Lines are Average Values") +
+            geom_vline(xintercept = mean(data_sub6$polarity, na.rm = TRUE),
+                       colour = "#F7965C",
+                       linetype = "dashed")
+    })
+    
 }
 
 # Run the application

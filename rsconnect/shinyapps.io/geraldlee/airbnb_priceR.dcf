@@ -5,8 +5,8 @@ account: geraldlee
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1854897
-bundleId: 3131391
+bundleId: 3131971
 url: https://geraldlee.shinyapps.io/airbnb_priceR/
-when: 1589195179.57508
+when: 1589205672.85209
 asMultiple: FALSE
 asStatic: FALSE

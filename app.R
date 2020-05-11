@@ -70,10 +70,12 @@ ui <- fluidPage(
             
             tabsetPanel(type = "tabs",
                         tabPanel("Listings",
-                                 h2("Explore Airbnb listings in London"),
-                                 h3("Number of Listings"),
+                                 h3("Explore Airbnb listings in London"),
+                                 p("The interactive web-app aims to help you (both Airbnb hosts and guests) to engage with data from Airbnb! Use the 
+                                   different toggles and sliders on the left to interact with the data"),
+                                 h4("Number of Listings"),
                                  p(textOutput("count")),
-                                 h3("PriceR Estimate"),
+                                 h4("PriceR Estimate"),
                                  p(textOutput("estimate")),
                                  br(),
                                  leafletOutput(outputId = "map"),
@@ -85,9 +87,13 @@ ui <- fluidPage(
                                  DT::dataTableOutput("prices")),
                         tabPanel("Neighbourhood Analytics",
                                  br(),
+                                 plotOutput("listingsBreakdown"),
+                                 br(),
                                  plotOutput("insights"),
                                  br(),
-                                 plotOutput("histogram")),
+                                 plotOutput("histogram"),
+                                 br(),
+                                 plotOutput('priceBreakdown')),
                         tabPanel("Cleaning Fees",
                                  br(),
                                  plotOutput("average_cleaning_fees"),
@@ -98,22 +104,17 @@ ui <- fluidPage(
                                  br(),
                                  plotOutput("sentiment_analysis"),
                                  br(),
-                                 p("WordCloud for Positive Reviews in the Neighbourhood"),
+                                 h4("WordCloud for Positive Reviews in the Neighbourhood"),
                                  plotOutput("positiveWordcloud"),
                                  br(),
-                                 p("WordCloud for Negative Reviews in the Neighbourhood"),
+                                 h4("WordCloud for Negative Reviews in the Neighbourhood"),
                                  plotOutput("negativeWordcloud")),
                         tabPanel("Info",
                                  br(),
                                  p("Thank you for visiting this page!"),
                                  br(),
-                                 p("This web-app was built through RShiny. The intended project is to assist both Airbnb hosts and guests by
-                                 providing them with an interactive dashboard where they can analyze different variables. For guests, we hope this 
-                                 dashboard can provide you with a new way to find a short-term accommodation in London. You can toggle through different
-                                 ratings and reviews, cleaning fees and proximity to public transportation. For Airbnb hosts, we hope this platform allows you
-                                 to gain an insight into comparative prices and ratings. If you are interested to find out more about how this app was built, 
-                                 you can check out the code and data on the",
-                                   tags$a(href="https://github.com/gl2668/airbnb_priceR", "github page"),
+                                 p("This web-app was built through RShiny. If you are interested to find out more about how this app was built, 
+                                 you can check out the code and data on the", tags$a(href="https://github.com/gl2668/airbnb_priceR", "github page"),
                                    " page"),
                                  br(),
                                  p("The data from this web-app was retrieved from InsideAirbnb.com. It comprises over 90 columns and approximately 
@@ -281,25 +282,26 @@ server <- function(input, output) {
             setView(lng = -0.118092, lat = 51.509865, zoom = 10)  %>% #setting the view over ~ center of North America
             addTiles() %>% 
             addProviderTiles(providers$CartoDB.Positron) %>%
-            addCircles(data = data_sub3, 
-                       lat = ~ latitude, 
-                       lng = ~ longitude, 
-                       weight = 2, 
-                       popup = ~as.character(listing_link), 
-                       label = ~as.character(paste0("Price: ", sep = " ", price)), 
-                       fillOpacity = 0.3,
-                       color = "#F7965C",
-                       group = "Listings") %>%
-            addMarkers(data = tube, 
-                       lat = ~ lat, 
-                       lng = ~ lng,
-                       icon = tubeIcons,
-                       popup = ~as.character(content),
-                       group = "Rail Transport",
-                       options = markerOptions(opacity = 0.3)) %>%
+                addCircles(data = data_sub3, 
+                           lat = ~latitude, 
+                           lng = ~longitude, 
+                           weight = 2, 
+                           popup = ~as.character(listing_link), 
+                           label = ~as.character(paste0("Price: ", sep = " ", price)), 
+                           fillOpacity = 0.3,
+                           color = "#F7965C",
+                           group = "Listings") %>%
+                addMarkers(data = tube, 
+                           lat = ~lat, 
+                           lng = ~lng,
+                           icon = tubeIcons,
+                           popup = ~as.character(content),
+                           group = "Rail Transport",
+                           options = markerOptions(opacity = 0.3)) %>%
                 addLayersControl(
                     overlayGroups = c("Listings", "Rail Transport"),
-                    options = layersControlOptions(collapsed = FALSE)) %>% hideGroup("Rail Transport")
+                    options = layersControlOptions(collapsed = FALSE)) %>% 
+                hideGroup("Rail Transport")
                 
         } else {
             
@@ -462,21 +464,71 @@ server <- function(input, output) {
             group_by(neighbourhood_cleansed, room_type) %>%
             summarize(clean_fee = mean(cleaning_fee, na.rm = TRUE)) %>%
             ggplot(aes(x = neighbourhood_cleansed, y = room_type, fill = clean_fee)) +
-            geom_tile(color = "white", size = 0.4) +
+            geom_tile(color = "white", size = 0.7) +
             labs(x = "", y = "") +
             scale_y_discrete(expand=c(0,0))+
             scale_x_discrete(expand=c(0,0))+
             scale_fill_viridis_b(name="Average Fee (GBP)", option = "B") +
-            ggtitle("Average Cleaning Fee Per Night For Airbnb Listings Across London") +
+            ggtitle("Average Cleaning Fee Per Night") +
             coord_fixed()+
-            theme_grey(base_size=8)+
             theme(axis.text.x=element_text(angle=90),
                   axis.text=element_text(face="bold"),
-                  axis.ticks=element_line(size=0.4),
+                  axis.ticks=element_line(size=0.6),
                   plot.background=element_blank(),
                   panel.border=element_blank())
     })
     
+    # Listing Breakdown
+    output$listingsBreakdown <- renderPlot ({
+        data_sub10 <- listings %>% dplyr::filter(price <= 800,
+                                                 neighbourhood_cleansed == input$neighbourhood,
+                                                 accommodates <= 10)
+        
+        data_sub10 %>%
+            select(room_type, accommodates) %>%
+            group_by(room_type, accommodates) %>%
+            count() %>%
+            ggplot(aes(fill=room_type, y=n, x=factor(accommodates))) +
+            geom_bar(position ="stack", stat="identity", alpha=0.7) +
+            scale_fill_manual(name = "Property Types", 
+                              values = c("red", "lightblue", "orange", "grey", "blue")) +
+            labs(x= "Number of Guests Listing can Accommodate", y = "Count of Units",
+                 title = "Number of Units by Accommodation and Type") +
+            theme_minimal() +
+            theme(panel.background = element_rect(fill = "white",
+                                                  colour = "black",
+                                                  size = 0.5, 
+                                                  linetype = "solid"),
+                  panel.grid.major.x = element_blank(),
+                  panel.grid.major.y = element_line(size = .1, 
+                                                    color = "black",
+                                                    linetype = "dashed"),
+                  panel.grid.minor = element_blank(),
+                  legend.position = c(.95, .95),
+                  legend.justification = c("right", "top"),
+                  legend.box.just = "right",
+                  legend.margin = margin(6, 6, 6, 6),
+                  plot.title = element_text(size = 12, margin = margin(b = 10)))
+
+    })
+    
+    # Price Breakdown
+    output$priceBreakdown <- renderPlot ({
+        data_sub11 <- listings %>% 
+            dplyr::filter(price <= 800,
+                          neighbourhood_cleansed == input$neighbourhood,
+                          accommodates <= 10) %>%
+            dplyr::select(accommodates, room_type, price)
+            
+        
+        data_sub11 %>% 
+            ggplot(aes(x = factor(accommodates), y = price)) +
+            geom_boxplot(alpha = 0.2) +
+            facet_wrap(~room_type) + 
+            labs(x= "Number of Guests Listing can Accommodate", y = "Price (GBP)",
+                 title = "Price by Size of Listing and Property Type") +
+            theme(panel.spacing = unit(1, "lines"))
+    })
     
 }
 

@@ -23,3 +23,11 @@ The dataset used can be found on Kaggle. The original source is InsideAirbnb.com
 
 * Listings dataset can be found [here](https://www.kaggle.com/gl2668/london-airbnb-listings)
 * Reviews dataset can be found [here](https://www.kaggle.com/gl2668/london-airbnb-reviews)
+
+***
+
+### Authors
+
+Gerald Lee
+Joellyn Heng
+Kyung Suk Lee

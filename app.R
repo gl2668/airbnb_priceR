@@ -13,11 +13,13 @@ library(leaflet)
 library(leaflet.extras)
 library(shinythemes)
 library(tidyr)
+library(wordcloud)
 
 # Load File
 listings <- readRDS("shiny_listings.rds")
 tube <- readRDS("london_tube.rds")
 reviews <- readRDS("reviewShiny.rds")
+reviewtdm <- readRDS("reviewTDM.rds")
 
 # Define UI for the Airbnb application
 ui <- fluidPage(
@@ -86,14 +88,21 @@ ui <- fluidPage(
                                  plotOutput("insights"),
                                  br(),
                                  plotOutput("histogram")),
-                         tabPanel("Cleaning Fees",
-                                  br(),
-                                  plotOutput("average_cleaning_fees")),
+                        tabPanel("Cleaning Fees",
+                                 br(),
+                                 plotOutput("average_cleaning_fees"),
+                                 plotOutput("average_cleaning_fees_neighbourhood")),
                         tabPanel("Guest Ratings",
                                  br(),
                                  plotOutput("ratings"),
                                  br(),
-                                 plotOutput("sentiment_analysis")),
+                                 plotOutput("sentiment_analysis"),
+                                 br(),
+                                 p("WordCloud for Positive Reviews in the Neighbourhood"),
+                                 plotOutput("positiveWordcloud"),
+                                 br(),
+                                 p("WordCloud for Negative Reviews in the Neighbourhood"),
+                                 plotOutput("negativeWordcloud")),
                         tabPanel("Info",
                                  br(),
                                  p("Thank you for visiting this page!"),
@@ -201,8 +210,7 @@ server <- function(input, output) {
                                    price <= 800)
         
         ggplot(data_sub, aes(x = review_scores_rating,
-                             y = price,
-                             color = factor(bathrooms))) +
+                             y = price)) +
           geom_point(size = 3,
                      alpha = 0.8) +
           theme(panel.background = element_rect(fill = "white",
@@ -213,11 +221,11 @@ server <- function(input, output) {
                 panel.grid.major.y = element_line(size = .1, 
                                                   color = "black",
                                                   linetype = "dashed")) +
-          labs(x = "Review Score Rating (over 100)",
+          labs(x = "Review Score Rating (0-100)",
                y = "Price (GBP)",
                color = "Bathrooms",
                title = "Airbnb Statistics for the Neighbourhood",
-               subtitle = "Based on Input Filters, Orange Dashed Lines are Average Values") +
+               subtitle = "Orange Dashed Lines are Average Values based on Input Features") +
           geom_hline(yintercept = mean(data_sub$price),
                      colour = "#F7965C",
                      linetype = "dashed") +
@@ -247,7 +255,7 @@ server <- function(input, output) {
             labs(x = "Price (GBP)",
                  y = "Number of Listings",
                  title = "Histogram of Airbnb Prices in the Neighbourhood",
-                 subtitle = "Based on Input Filters, Orange Dashed Lines are Average Values") +
+                 subtitle = "Orange Dashed Lines are Average Values based on Input Features") +
             geom_vline(xintercept = mean(data_sub2$price, na.rm = TRUE),
                        colour = "#F7965C",
                        linetype = "dashed")
@@ -347,7 +355,7 @@ server <- function(input, output) {
             labs(x = "Review Score Rating (over 100)",
                  y = "Count",
                  title = "Histogram of Airbnb Ratings in the Neighbourhood",
-                 subtitle = "Based on Input Filters, Orange Dashed Lines are Average Values") +
+                 subtitle = "Orange Dashed Lines are Average Values based on Input Features") +
             geom_vline(xintercept = mean(data_sub4$review_scores_rating, na.rm = TRUE),
                        colour = "#F7965C",
                        linetype = "dashed")
@@ -402,11 +410,73 @@ server <- function(input, output) {
             labs(x = "AFINN Sentiment Score of Reviews",
                  y = "Count",
                  title = "Sentiment Analysis of Reviews in Neighbourhood",
-                 subtitle = "Based on Input Filters, Orange Dashed Lines are Average Values") +
+                 subtitle = "Orange Dashed Lines are Average Values based on Input Features") +
             geom_vline(xintercept = mean(data_sub6$polarity, na.rm = TRUE),
                        colour = "#F7965C",
                        linetype = "dashed")
     })
+    
+    # Positive WordCloud
+    output$positiveWordcloud <- renderPlot ({
+        data_sub7 <- reviewtdm %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood)
+        
+        wc <- data_sub7 %>%
+            filter(polarity > 5) %>%
+            group_by(term) %>%
+            summarise(n = sum(count)) %>%
+            arrange(desc(n))
+        set.seed(1234)
+        
+        suppressWarnings(wordcloud(words = wc$term,
+                                   freq = wc$n,
+                                   max.words = 80, 
+                                   random.order = FALSE,
+                                   colors = 'dodgerblue2'))
+    })
+    
+    # Negative WordCloud
+    output$negativeWordcloud <- renderPlot ({
+        data_sub8 <- reviewtdm %>% dplyr::filter(neighbourhood_cleansed == input$neighbourhood)
+        
+        nc <- data_sub8 %>%
+            filter(polarity < -5) %>%
+            group_by(term) %>%
+            summarise(n = sum(count)) %>%
+            arrange(desc(n))
+        set.seed(1234)
+        
+        wordcloud(words = nc$term,
+                  freq = nc$n,
+                  max.words = 80, 
+                  random.order = FALSE,
+                  colors = "orangered2")
+    })
+    
+    # average_cleaning_fees_neighbourhood
+    output$average_cleaning_fees_neighbourhood <- renderPlot ({
+        data_sub9 <- listings %>% dplyr::filter(bedrooms == input$rooms,
+                                                accommodates == input$accommodates,
+                                                price <= 800)
+        
+        data_sub9 %>% 
+            group_by(neighbourhood_cleansed, room_type) %>%
+            summarize(clean_fee = mean(cleaning_fee, na.rm = TRUE)) %>%
+            ggplot(aes(x = neighbourhood_cleansed, y = room_type, fill = clean_fee)) +
+            geom_tile(color = "white", size = 0.4) +
+            labs(x = "", y = "") +
+            scale_y_discrete(expand=c(0,0))+
+            scale_x_discrete(expand=c(0,0))+
+            scale_fill_viridis_b(name="Average Fee (GBP)", option = "B") +
+            ggtitle("Average Cleaning Fee Per Night For Airbnb Listings Across London") +
+            coord_fixed()+
+            theme_grey(base_size=8)+
+            theme(axis.text.x=element_text(angle=90),
+                  axis.text=element_text(face="bold"),
+                  axis.ticks=element_line(size=0.4),
+                  plot.background=element_blank(),
+                  panel.border=element_blank())
+    })
+    
     
 }
 

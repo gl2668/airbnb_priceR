@@ -28,6 +28,6 @@ The dataset used can be found on Kaggle. The original source is InsideAirbnb.com
 
 ### Authors
 
-Gerald Lee
-Joellyn Heng
-Kyung Suk Lee
+* Gerald Lee
+* Joellyn Heng
+* Kyung Suk Lee

@@ -56,7 +56,7 @@ ui <- fluidPage(
                         max = 10,
                         value = 2),
             selectInput(inputId = "room_types_input", 
-                        label = "Type of Lodging",
+                        label = "Room Type",
                         choices = c("All types",
                                     "Entire home/apt",
                                     "Private room",
@@ -69,6 +69,25 @@ ui <- fluidPage(
         mainPanel(
             
             tabsetPanel(type = "tabs",
+                        tabPanel("Info",
+                                 br(),
+                                 p("This website is a tool that can be used by Airbnb hosts. We hope to provide a data-driven way for hosts to analyze and understand
+                                 the landscape of short-term accommodations in London. Hosts can also beneft from this website by looking at different cleaning-fees, 
+                                 review and rating scores and prices. They can use the tools and visualisations
+                                 on this webapp to get a sense of how prices are set on Airbnb and get a pulse-check for how they are positioned
+                                 in relation to competitors. For anyone who wishes to become a host and list their property for the first time, this 
+                                 tool would be very useful to gather information on how they should price their listing. New Airbnb hosts can use the website for a 
+                                   first-cut understanding of the competitive landscape for market entry and pricing strategy"),
+                                 br(),
+                                 p("This web-app was built through RShiny. If you are interested to find out more about how this app was built, 
+                                 you can check out the code and data on the", tags$a(href="https://github.com/gl2668/airbnb_priceR", "github page"),
+                                   " page"),
+                                 br(),
+                                 p("The data from this web-app was retrieved from InsideAirbnb.com. It comprises over 90 columns and approximately 
+                                 85,000 host listings in London, UK from 2009 to 5th November 2019. If you are 
+                                 interested in using the data for visualization and ML applications, you can find a version on", 
+                                   tags$a(href="https://www.kaggle.com/gl2668/london-airbnb-listings", "kaggle")),
+                                 br()),
                         tabPanel("Listings",
                                  h3("Explore Airbnb listings in London"),
                                  p("The interactive web-app aims to help you (both Airbnb hosts and guests) to engage with data from Airbnb! Use the 
@@ -86,19 +105,26 @@ ui <- fluidPage(
                                  br(),
                                  DT::dataTableOutput("prices")),
                         tabPanel("Neighbourhood Analytics",
-                                 br(),
-                                 plotOutput("listingsBreakdown"),
+                                 h4("Neighbourhood Analytics"),
+                                 p("Find out more about the supply and prices of listings in your neighbourhood"),
                                  br(),
                                  plotOutput("insights"),
                                  br(),
                                  plotOutput("histogram"),
                                  br(),
-                                 plotOutput('priceBreakdown')),
+                                 plotOutput("listingsBreakdown"),
+                                 br(),
+                                 plotOutput('priceBreakdown'),
+                                 br()),
                         tabPanel("Cleaning Fees",
+                                 h4("Cleaning Fees of Airbnb Listings"),
+                                 p("Users can find out how much on average cleaning fees contribute towards total price"),
                                  br(),
                                  plotOutput("average_cleaning_fees"),
                                  plotOutput("average_cleaning_fees_neighbourhood")),
                         tabPanel("Guest Ratings",
+                                 h4("Guest Ratings and Text Reviews"),
+                                 p("Explore Guest Ratings and the Sentiment Polarity Scores of plain-text reviews"),
                                  br(),
                                  plotOutput("ratings"),
                                  br(),
@@ -108,22 +134,8 @@ ui <- fluidPage(
                                  plotOutput("positiveWordcloud"),
                                  br(),
                                  h4("WordCloud for Negative Reviews in the Neighbourhood"),
-                                 plotOutput("negativeWordcloud")),
-                        tabPanel("Info",
-                                 br(),
-                                 p("Thank you for visiting this page!"),
-                                 br(),
-                                 p("This web-app was built through RShiny. If you are interested to find out more about how this app was built, 
-                                 you can check out the code and data on the", tags$a(href="https://github.com/gl2668/airbnb_priceR", "github page"),
-                                   " page"),
-                                 br(),
-                                 p("The data from this web-app was retrieved from InsideAirbnb.com. It comprises over 90 columns and approximately 
-                                 85,000 host listings in London, UK from 2009 to 5th November 2019. If you are 
-                                 interested in using the data for visualization and ML applications, you can find a version on", 
-                                   tags$a(href="https://www.kaggle.com/gl2668/london-airbnb-listings", "kaggle")),
-                                 br(),
-                                 p("If you have any questions / feedback, please feel free to shoot me an email at
-                                   gl2668@columbia.edu."))
+                                 plotOutput("negativeWordcloud"),
+                                 br())
                                  )
             
         )
@@ -200,7 +212,7 @@ server <- function(input, output) {
         
         y_hat <- predict(naive_linear, newdata = test) %>% round(2)
         
-        paste("Based on your filter, a listing in this neighbourhood should cost GBP", y_hat, "a night")
+        paste("Based on the input filters, a listing in this neighbourhood should cost GBP", y_hat, "a night")
     })
     
     # Scatter Plot
@@ -225,7 +237,7 @@ server <- function(input, output) {
           labs(x = "Review Score Rating (0-100)",
                y = "Price (GBP)",
                color = "Bathrooms",
-               title = "Airbnb Statistics for the Neighbourhood",
+               title = "Price and Ratings of Listings based on all Input Filters",
                subtitle = "Orange Dashed Lines are Average Values based on Input Features") +
           geom_hline(yintercept = mean(data_sub$price),
                      colour = "#F7965C",
@@ -255,7 +267,7 @@ server <- function(input, output) {
                                                     linetype = "dashed")) +
             labs(x = "Price (GBP)",
                  y = "Number of Listings",
-                 title = "Histogram of Airbnb Prices in the Neighbourhood",
+                 title = "Histogram of Airbnb Prices based on all Input Filters",
                  subtitle = "Orange Dashed Lines are Average Values based on Input Features") +
             geom_vline(xintercept = mean(data_sub2$price, na.rm = TRUE),
                        colour = "#F7965C",
@@ -360,7 +372,7 @@ server <- function(input, output) {
                                                     linetype = "dashed")) +
             labs(x = "Review Score Rating (over 100)",
                  y = "Count",
-                 title = "Histogram of Airbnb Ratings in the Neighbourhood",
+                 title = "Histogram of Airbnb Ratings based on selected Neighbourhood",
                  subtitle = "Orange Dashed Lines are Average Values based on Input Features") +
             geom_vline(xintercept = mean(data_sub4$review_scores_rating, na.rm = TRUE),
                        colour = "#F7965C",
@@ -392,7 +404,7 @@ server <- function(input, output) {
             scale_x_discrete(name = "Number of Beds in Listing", limits = c(1: 10), breaks = seq(1, 10, 1)) +
             scale_y_continuous(name = "Average Fees per Bed (GBP)") +
             scale_fill_manual(labels = c("Cleaning Fees Per Bed", "Room Fee Per Bed"), values = c("#F7965C", "#FFC39F")) +
-            labs(title = "Cleaning Fees by Number of Beds") +
+            labs(title = "Breakdown of Total Fees by Number of Beds based on Selected Neighbourhood") +
             guides(fill = guide_legend(title = "Fee Type")) +
             geom_text(aes(label = round(avg_fee/beds), y = round(avg_fee/beds) + 0.05),
                       position = position_stack(vjust = 0.5))
@@ -415,7 +427,7 @@ server <- function(input, output) {
                                                     linetype = "dashed")) +
             labs(x = "AFINN Sentiment Score of Reviews",
                  y = "Count",
-                 title = "Sentiment Analysis of Reviews in Neighbourhood",
+                 title = "Sentiment Analysis of Reviews based on selected Neighbourhood",
                  subtitle = "Orange Dashed Lines are Average Values based on Input Features") +
             geom_vline(xintercept = mean(data_sub6$polarity, na.rm = TRUE),
                        colour = "#F7965C",
@@ -494,10 +506,10 @@ server <- function(input, output) {
             count() %>%
             ggplot(aes(fill=room_type, y=n, x=factor(accommodates))) +
             geom_bar(position ="stack", stat="identity", alpha=0.7) +
-            scale_fill_manual(name = "Property Types", 
+            scale_fill_manual(name = "Room Type", 
                               values = c("red", "lightblue", "orange", "grey", "blue")) +
             labs(x= "Number of Guests Listing can Accommodate", y = "Count of Units",
-                 title = "Number of Units by Accommodation and Type") +
+                 title = "Number of Listings by Maximum Pax and Room Type") +
             theme_minimal() +
             theme(panel.background = element_rect(fill = "white",
                                                   colour = "black",
@@ -530,7 +542,7 @@ server <- function(input, output) {
             geom_boxplot(alpha = 0.2) +
             facet_wrap(~room_type) + 
             labs(x= "Number of Guests Listing can Accommodate", y = "Price (GBP)",
-                 title = "Price by Size of Listing and Property Type") +
+                 title = "Price by Maximum Pax and Room Type") +
             theme(panel.spacing = unit(1, "lines"))
     })
     

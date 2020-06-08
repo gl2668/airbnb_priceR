@@ -1,4 +1,4 @@
-# airbnb_priceR
+# Airbnb priceR Shiny App
 
 ***
 
